@@ -15,7 +15,8 @@ constraint wr_rd_c { write != read; }
     $display("=====WRITE=%0d======",write  );
 	$display("=====READ=%0d=======",read   );
     $display("=====ADRESS=%0d=====",addres );
-    $display("=====DATA_IN=%0d====",data_in);		
+    $display("=====DATA_IN=%0d====",data_in);
+    $display("=====DATA_OUT=%0d===",data_out);	
    endfunction
    
    
@@ -44,7 +45,7 @@ class genrator;
    function new(mailbox gen2driv,event ended);
      this.gen2driv =gen2driv;
 	  this.ended    = ended;
-	  //trans = new();
+	  trans = new();
   endfunction
      
  task main; 
@@ -106,7 +107,7 @@ endclass
             input write,read;
 			input addres;
 			input data_in;
-			output data_out;
+			input data_out;
   endclocking 
 /////MODPORT BLOCK/////////////////   
    modport drvier_mod( clocking driver_cb,input clk );
@@ -132,26 +133,27 @@ class driver;
 	
 	task drive;
 			transaction trans;
-			`DRIV_IF.write<=0;
-			`DRIV_IF.read<=0;
+			 `DRIV_IF.write<=0;
+			 `DRIV_IF.read<=0;
 			 $display("==========DRIVER IS ENTERD===========");
 			gen2driv.get(trans);
-			$display("DRIVER-----TRSFER");
+			// $display("DRIVER-----TRSFER");
 		  @(posedge ram_vif.drvier_mod.clk);
 			   	 `DRIV_IF.addres <= trans.addres; 
 			if(trans.write)
 			  begin 
                  `DRIV_IF.write<=trans.write;
 			     `DRIV_IF.data_in<=trans.data_in;
-			   $display("======DRIVER>>>>>>>ADDRES=%0d,DATAIN=%0d======",trans.addres,trans.data_in);
+			   // $display("======DRIVER>>>>>>>ADDRES=%0d,DATAIN=%0d======",trans.addres,trans.data_in);
 			   @(posedge ram_vif.drvier_mod.clk);
 			  end
 			if(trans.read)
                begin
 			    `DRIV_IF.read<=trans.read; 
-				 //@(posedge ram_vif.drvier_mod.clk);
+				 @(posedge ram_vif.drvier_mod.clk);
 			    trans.data_out=`DRIV_IF.data_out;
-			    $display("======DRIVER>>>>>>>ADDRES=%0d,DATAIN=%0d======",trans.addres,ram_vif.data_out);
+				// $display("DATA_OUT=%0d",`DRIV_IF.data_out);
+			    // $display("======DRIVER>>>>>>>ADDRES=%0d,DATAOUT=%0d======",trans.addres,trans.data_out);
                 end
 		no_transactions++;
 				
@@ -161,7 +163,9 @@ task main;
     //forever 
 	 begin
        forever
+	      begin
             drive();
+		  end
      end
 endtask	
 
@@ -186,22 +190,21 @@ class moniter;
      forever 
 	   begin
 	   
-	     transaction trans;
-		 
+	     transaction trans;		 
 		 trans =new();
 		 @(posedge ram_vif.clk);
-		       trans.addres=ram_vif.addres;
+		       trans.addres=`MON_IF.addres;
 		    if(ram_vif.write)
 			   begin
-			     trans.write = ram_vif.write;
-			     trans.data_in=ram_vif.data_in;
-				 $display("=========MONITER>>>ADRESS=%0d,DATA=%0d========",trans.addres,trans.data_in);
+			     trans.write = `MON_IF.write;
+			     trans.data_in=`MON_IF.data_in;
+				 // $display("=========MONITER>>>ADRESS=%0d,DATA=%0d========",trans.addres,trans.data_in);
 			   end
 			 if(ram_vif.read)
 			   begin
-			     trans.read = ram_vif.read;
-				 trans.data_out=ram_vif.data_out;	
-                 $display("=========MONITER>>>ADRESS=%0d,DATA=%0d=========",trans.addres,trans.data_out);				 
+			     trans.read = `MON_IF.read;
+				 trans.data_out=`MON_IF.data_out;	
+                 // $display("=========MONITER>>>ADRESS=%0d,DATA=%0d=========",trans.addres,trans.data_out);				 
 			   end
 	          mon2scb.put(trans);	
              			  
@@ -232,26 +235,25 @@ endfunction
 
 task main;
  transaction trans ;
-forever
+ forever
  begin
  #100;
-	mon2scb.get(trans);
-  if(trans.write)
-	     begin
-           mem[trans.addres] = trans.data_in;
-		 end	
-	else if(trans.read)
+	mon2scb.get(trans);      
+	 if(trans.read)
 	  begin
-	    read_out = mem[trans.addres] ;
-       if(read_out == trans.data_out)
-    	$display("[SCB-PASS] Addr = %0d,\n \t Data :: Expected = %0d Actual = %0d",trans.addres,read_out,trans.data_out);
-       else 
-         $display("[SCB-FAIL] Addr = %0d,\n \t Data :: Expected = %0d Actual = %0d",trans.addres,read_out,trans.data_out);		
-	  end
-     
-  
-  end
+	    read_out = mem[trans.addres] ; 
+	   if(read_out == trans.data_out)
+         $display("[SCB-PASS] Addr = %0d,\n  Data :: Expected = %0d Actual = %0d",trans.addres,read_out,trans.data_out);
+        else 
+         $display("[SCB-FAIL] Addr = %0d,\n  Data :: Expected = %0d Actual = %0d",trans.addres,read_out,trans.data_out);	
+      end		
+	 if(trans.write)
+        mem[trans.addres] = trans.data_in;
+    	
+	  
   no_transactions++;
+  end
+  
 endtask
 endclass
 
@@ -351,7 +353,7 @@ function void pre_randomize();
 	 env=new(intf);
 	 my_tr =new();
      //setting the repeat count of generator as 4, means to generate 4 packets
-    env.gen.repeat_count = 10;
+    env.gen.repeat_count = 12;
 	env.gen.trans = my_tr;
 	env.run();
 	
