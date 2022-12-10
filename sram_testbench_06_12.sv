@@ -377,5 +377,13 @@ module tbench_top;
 		   .read     (intf.read     ),
            .data_in  (intf.data_in  ),
            .data_out (intf.data_out ));
+	
+	
+	initial
+		begin
+			#100000;
+			$stop;
+		end
+	
 endmodule
 
