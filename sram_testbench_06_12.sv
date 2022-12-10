@@ -240,17 +240,14 @@ task main;
  #100;
 	mon2scb.get(trans);      
 	 if(trans.read)
-	  begin
-	    read_out = mem[trans.addres] ; 
-	   if(read_out == trans.data_out)
-         $display("[SCB-PASS] Addr = %0d,\n  Data :: Expected = %0d Actual = %0d",trans.addres,read_out,trans.data_out);
-        else 
-         $display("[SCB-FAIL] Addr = %0d,\n  Data :: Expected = %0d Actual = %0d",trans.addres,read_out,trans.data_out);	
-      end		
+	    read_out = mem[trans.addres] ; 		
 	 if(trans.write)
         mem[trans.addres] = trans.data_in;
     	
-	  
+	if(read_out == trans.data_out)
+         $display("[SCB-PASS] Addr = %0d,\n  Data :: Expected = %0d Actual = %0d",trans.addres,read_out,trans.data_out);
+        else 
+         $display("[SCB-FAIL] Addr = %0d,\n  Data :: Expected = %0d Actual = %0d",trans.addres,read_out,trans.data_out);	  
   no_transactions++;
   end
   
